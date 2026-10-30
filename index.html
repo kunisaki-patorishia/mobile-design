@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CareLink 护联 — Interactive prototype</title>
+  <style>
+    :root {
+      --navy:#123B5D;
+      --navy-dark:#0B2C46;
+      --teal:#007C79;
+      --teal-soft:#E8F4F3;
+      --ink:#17212B;
+      --muted:#52616B;
+      --line:#DCE5EA;
+      --paper:#FAFCFD;
+      --white:#FFFFFF;
+      --red:#B42318;
+      --red-soft:#FFF1F0;
+      --gold:#B7791F;
+      --shadow:0 18px 50px rgba(18,59,93,.15);
+      --soft-shadow:0 7px 18px rgba(18,59,93,.08);
+      --radius:18px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", Arial, sans-serif;
+    }
+    * { box-sizing:border-box; }
+    html, body { min-height:100%; margin:0; font-family:var(--font); color:var(--ink); }
+    body { background:linear-gradient(145deg,#edf5f6 0%,#f8f5ef 52%,#eaf2f7 100%); }
+    button, input, textarea { font:inherit; }
+    button { cursor:pointer; }
+    .workspace { min-height:100vh; display:flex; align-items:center; justify-content:center; gap:42px; padding:32px; }
+    .side-panel { width:280px; color:var(--navy); }
+    .side-panel .eyebrow { margin:0 0 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--teal); }
+    .side-panel h1 { font-size:31px; line-height:1.08; margin:0 0 14px; letter-spacing:-.04em; }
+    .side-panel h1 span { color:var(--teal); white-space:nowrap; }
+    .side-panel p { font-size:14px; line-height:1.55; color:var(--muted); margin:0 0 20px; }
+    .flow-card { background:rgba(255,255,255,.76); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.8); padding:16px; border-radius:16px; box-shadow:0 10px 30px rgba(18,59,93,.06); }
+    .flow-card strong { display:block; font-size:13px; margin-bottom:8px; }
+    .flow-card small { color:var(--muted); line-height:1.45; display:block; }
+    .screen-jumps { display:flex; flex-wrap:wrap; gap:7px; margin-top:14px; }
+    .jump { min-height:34px; border:1px solid #C6D7DF; border-radius:999px; background:#fff; color:var(--navy); font-size:11px; font-weight:700; padding:5px 10px; }
+    .jump:hover { background:var(--teal-soft); border-color:var(--teal); }
+
+    .phone { position:relative; width:390px; height:844px; overflow:hidden; flex:none; border:10px solid #17212B; border-radius:48px; background:var(--paper); box-shadow:var(--shadow); }
+    .phone::before { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:122px; height:27px; z-index:30; background:#17212B; border-radius:0 0 18px 18px; }
+    .statusbar { height:42px; padding:12px 24px 0; display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:800; color:var(--ink); position:relative; z-index:20; background:var(--paper); }
+    .status-icons { display:flex; gap:6px; align-items:center; }
+    .status-icons i { display:inline-block; border-radius:2px; background:var(--ink); }
+    .status-icons .signal { width:14px; height:8px; clip-path:polygon(0 100%,0 70%,20% 70%,20% 45%,45% 45%,45% 22%,70% 22%,70% 0,100% 0,100% 100%); }
+    .status-icons .wifi { width:13px; height:9px; clip-path:polygon(0 0,100% 0,82% 24%,66% 12%,50% 7%,34% 12%,18% 24%,50% 100%); }
+    .status-icons .battery { width:19px; height:9px; background:none; border:1.5px solid var(--ink); position:relative; }
+    .status-icons .battery:after { content:""; position:absolute; right:-3px; top:2px; width:2px; height:4px; background:var(--ink); border-radius:0 1px 1px 0; }
+    .status-icons .battery:before { content:""; position:absolute; inset:1.5px; width:12px; background:var(--ink); border-radius:1px; }
+
+    .app { height:calc(100% - 42px); position:relative; }
+    .screen { position:absolute; inset:0; display:none; overflow-y:auto; overscroll-behavior:contain; padding:0 20px 96px; background:var(--paper); scrollbar-width:none; }
+    .screen::-webkit-scrollbar { display:none; }
+    .screen.active { display:block; animation:in .25s ease-out; }
+    @keyframes in { from { opacity:.35; transform:translateX(10px); } to { opacity:1; transform:translateX(0); } }
+    .screen.splash { padding:0 24px 34px; background:linear-gradient(180deg,#F8FCFC 0%,#FAFCFD 65%,#E8F4F3 100%); }
+    .splash-content { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:12px; }
+    .brand-mark { width:78px; height:78px; border-radius:26px; display:grid; place-items:center; background:var(--navy); box-shadow:0 12px 22px rgba(18,59,93,.22); margin-bottom:16px; }
+    .brand-mark svg { width:47px; height:47px; stroke:#fff; }
+    .wordmark { font-weight:850; font-size:29px; letter-spacing:-.05em; color:var(--navy); }
+    .wordmark span { color:var(--teal); font-weight:750; font-size:25px; margin-left:3px; }
+    .tagline { font-size:17px; line-height:1.45; color:var(--muted); margin:10px auto 28px; max-width:260px; }
+    .language-choice { display:flex; gap:8px; padding:4px; border:1px solid var(--line); background:#fff; border-radius:999px; margin-bottom:26px; }
+    .language-choice button { min-height:38px; border:0; background:transparent; border-radius:999px; color:var(--muted); padding:0 17px; font-size:13px; font-weight:750; }
+    .language-choice button.selected { background:var(--teal-soft); color:var(--teal); }
+    .onboarding-grid { width:100%; display:grid; gap:11px; margin-bottom:26px; text-align:left; }
+    .mini-benefit { display:flex; align-items:center; gap:13px; padding:14px; background:rgba(255,255,255,.84); border:1px solid var(--line); border-radius:15px; }
+    .benefit-icon { width:42px; min-width:42px; height:42px; border-radius:13px; display:grid; place-items:center; background:var(--teal-soft); color:var(--teal); }
+    .mini-benefit b { font-size:14px; display:block; margin-bottom:2px; }
+    .mini-benefit small { color:var(--muted); font-size:12px; line-height:1.35; }
+
+    .topbar { min-height:59px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 -2px 17px; padding-top:2px; }
+    .small-brand { font-size:18px; color:var(--navy); font-weight:850; letter-spacing:-.04em; white-space:nowrap; }
+    .small-brand span { color:var(--teal); }
+    .utility-actions { display:flex; align-items:center; gap:5px; }
+    .utility { min-width:42px; min-height:42px; border-radius:12px; border:1px solid var(--line); background:#fff; color:var(--navy); padding:0 9px; font-weight:800; font-size:12px; }
+    .language-pill { min-width:59px; color:var(--teal); }
+    .page-title { font-size:28px; letter-spacing:-.045em; line-height:1.08; margin:0 0 7px; color:var(--navy); }
+    .page-subtitle { margin:0 0 19px; color:var(--muted); font-size:14px; line-height:1.45; }
+    .back-row { min-height:52px; display:flex; align-items:center; gap:8px; margin:0 -6px 7px; }
+    .back-button { width:44px; height:44px; display:grid; place-items:center; border:0; background:transparent; color:var(--navy); border-radius:12px; }
+    .back-button:hover { background:var(--teal-soft); }
+    .back-button svg { width:23px; }
+    .section-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:24px 0 11px; }
+    .section-title h2 { margin:0; font-size:16px; color:var(--navy); letter-spacing:-.02em; }
+    .section-title button { background:transparent; border:0; color:var(--teal); font-size:12px; font-weight:800; padding:8px 0; }
+
+    .hero-cta { width:100%; min-height:127px; border:0; border-radius:20px; padding:20px; text-align:left; color:white; background:linear-gradient(130deg,var(--navy),#1B557D); box-shadow:0 12px 25px rgba(18,59,93,.18); position:relative; overflow:hidden; }
+    .hero-cta::after { content:""; position:absolute; width:145px; height:145px; right:-35px; top:-45px; border-radius:50%; border:1px solid rgba(255,255,255,.2); box-shadow:0 0 0 24px rgba(255,255,255,.06),0 0 0 48px rgba(255,255,255,.05); }
+    .hero-cta .cta-symbol { width:40px; height:40px; display:grid; place-items:center; background:rgba(255,255,255,.16); border-radius:13px; margin-bottom:11px; }
+    .hero-cta b { display:block; font-size:21px; letter-spacing:-.03em; }
+    .hero-cta b span { font-size:15px; font-weight:700; margin-left:5px; opacity:.9; }
+    .hero-cta small { display:block; margin-top:5px; font-size:13px; opacity:.88; }
+    .next-visit { border:1px solid #CAE5E2; background:var(--teal-soft); border-radius:18px; padding:15px; display:flex; gap:12px; align-items:center; }
+    .calendar-block { width:42px; height:44px; background:white; border:1px solid #B9DBD7; color:var(--teal); border-radius:12px; display:grid; place-items:center; font-size:13px; font-weight:850; line-height:1.05; text-align:center; }
+    .next-visit .visit-copy { flex:1; min-width:0; }
+    .eyebrow-label { color:var(--teal); font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:850; display:block; margin-bottom:4px; }
+    .next-visit b { font-size:14px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .next-visit small { color:var(--muted); font-size:12px; display:block; margin-top:2px; }
+    .chevron { color:var(--teal); font-size:23px; line-height:1; }
+    .task-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+    .task-card { min-height:124px; padding:14px; text-align:left; border-radius:17px; border:1px solid var(--line); background:#fff; box-shadow:0 3px 9px rgba(18,59,93,.025); position:relative; }
+    .task-card:nth-child(3) { grid-column:span 2; min-height:76px; display:flex; align-items:center; gap:12px; }
+    .task-icon { width:42px; height:42px; border-radius:13px; display:grid; place-items:center; color:var(--teal); background:var(--teal-soft); margin-bottom:12px; }
+    .task-card:nth-child(3) .task-icon { margin:0; }
+    .task-card b { display:block; font-size:14px; color:var(--navy); }
+    .task-card small { display:block; color:var(--muted); font-size:11px; margin-top:4px; }
+    .task-card .chevron { position:absolute; right:13px; bottom:13px; font-size:18px; }
+    .task-card:nth-child(3) .chevron { top:29px; }
+    .emergency-card { margin-top:18px; padding:13px 14px; border:1.5px solid #E7ABA7; background:var(--red-soft); border-radius:16px; display:flex; align-items:flex-start; gap:10px; }
+    .emergency-card .alert-symbol { color:var(--red); width:22px; margin-top:2px; flex:none; }
+    .emergency-card b { color:#8F1C14; display:block; font-size:13px; }
+    .emergency-card small { color:#8F423D; display:block; font-size:11px; line-height:1.35; margin:3px 0 5px; }
+    .text-link { border:0; background:transparent; color:var(--teal); padding:0; font-weight:800; font-size:12px; text-decoration:underline; text-underline-offset:2px; }
+    .nav { position:absolute; height:77px; padding:8px 13px 14px; bottom:0; left:0; right:0; z-index:15; display:flex; justify-content:space-between; border-top:1px solid var(--line); background:rgba(255,255,255,.96); backdrop-filter:blur(12px); }
+    .nav button { flex:1; border:0; background:transparent; color:#788893; font-size:10px; font-weight:750; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border-radius:12px; }
+    .nav button.active { color:var(--teal); }
+    .nav svg { width:21px; height:21px; }
+
+    .stepper { display:flex; align-items:center; gap:5px; margin:0 0 22px; }
+    .step { display:flex; align-items:center; gap:5px; color:#84939C; font-size:11px; font-weight:750; white-space:nowrap; }
+    .step-dot { width:20px; height:20px; border-radius:50%; display:grid; place-items:center; border:1.5px solid #B8C6CD; background:#fff; font-size:10px; }
+    .step.active { color:var(--teal); }
+    .step.active .step-dot { background:var(--teal); color:white; border-color:var(--teal); }
+    .step.done .step-dot { background:var(--teal-soft); border-color:var(--teal); color:var(--teal); }
+    .step-line { height:1.5px; flex:1; background:#C6D4D9; }
+    .choice-stack { display:grid; gap:10px; }
+    .choice { min-height:72px; width:100%; text-align:left; padding:13px; border:1.5px solid var(--line); border-radius:16px; background:#fff; display:flex; align-items:center; gap:12px; color:var(--ink); }
+    .choice.selected { border-color:var(--navy); background:#F2F8FA; box-shadow:0 0 0 2px rgba(18,59,93,.08); }
+    .choice-icon { width:43px; height:43px; display:grid; place-items:center; border-radius:13px; background:var(--teal-soft); color:var(--teal); flex:none; }
+    .choice-copy { min-width:0; flex:1; }
+    .choice-copy b { font-size:15px; display:block; color:var(--navy); }
+    .choice-copy b span { font-size:12px; color:var(--teal); font-weight:700; margin-left:3px; }
+    .choice-copy small { display:block; font-size:11px; color:var(--muted); margin-top:3px; line-height:1.35; }
+    .check { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1.5px solid #B7C8CF; color:white; flex:none; }
+    .selected .check { background:var(--navy); border-color:var(--navy); }
+    .sticky-action { position:absolute; bottom:0; left:0; right:0; padding:12px 20px 17px; background:linear-gradient(180deg,rgba(250,252,253,0),var(--paper) 22%); z-index:10; }
+    .button { width:100%; min-height:56px; border:0; border-radius:15px; padding:0 18px; font-size:16px; font-weight:800; transition:transform .15s, background .15s; }
+    .button:active { transform:scale(.985); }
+    .button.primary { color:white; background:var(--navy); box-shadow:0 8px 15px rgba(18,59,93,.14); }
+    .button.primary:hover { background:var(--navy-dark); }
+    .button.primary:disabled { background:#B7C6CF; box-shadow:none; cursor:not-allowed; }
+    .button.outline { color:var(--navy); background:#fff; border:1.5px solid var(--navy); }
+    .button.red { background:var(--red); color:white; }
+
+    .field-section { border:1px solid var(--line); border-radius:17px; background:#fff; overflow:hidden; }
+    .field-group { padding:14px; border-bottom:1px solid var(--line); }
+    .field-group:last-child { border-bottom:0; }
+    .field-label { font-size:12px; font-weight:850; color:var(--navy); margin-bottom:10px; display:flex; justify-content:space-between; gap:8px; }
+    .field-label span { font-weight:650; color:var(--teal); }
+    .option-row { width:100%; min-height:52px; border:1px solid var(--line); background:white; border-radius:13px; padding:9px 11px; display:flex; align-items:center; gap:10px; text-align:left; }
+    .option-row + .option-row { margin-top:8px; }
+    .option-row.selected { border-color:var(--teal); background:var(--teal-soft); }
+    .radio { width:19px; height:19px; border-radius:50%; border:1.5px solid #9BB0B9; display:grid; place-items:center; flex:none; }
+    .selected .radio:after { content:""; width:9px; height:9px; border-radius:50%; background:var(--teal); }
+    .option-row b { display:block; font-size:13px; color:var(--ink); }
+    .option-row small { display:block; font-size:10.5px; color:var(--muted); margin-top:2px; }
+    .address-row { display:flex; align-items:center; gap:10px; }
+    .address-row b { display:block; font-size:13px; color:var(--ink); }
+    .address-row small { display:block; color:var(--muted); font-size:11px; margin-top:3px; }
+    .address-row .edit { margin-left:auto; color:var(--teal); border:0; background:transparent; font-size:12px; font-weight:800; padding:8px; }
+    .voice-note { min-height:75px; background:#F7FAFB; border:1px solid #D9E4E8; border-radius:13px; padding:11px; display:flex; gap:10px; align-items:flex-start; }
+    .voice-note p { margin:1px 0 0; font-size:12px; line-height:1.45; color:var(--muted); }
+    .microphone { width:32px; height:32px; border-radius:10px; background:#fff; border:1px solid var(--line); display:grid; place-items:center; color:var(--teal); flex:none; }
+    .toggle-row { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--ink); }
+    .switch { width:42px; height:25px; border-radius:100px; background:var(--teal); position:relative; flex:none; }
+    .switch:after { content:""; position:absolute; height:19px; width:19px; right:3px; top:3px; background:white; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .estimate-strip { display:flex; gap:12px; align-items:center; margin-bottom:9px; padding:8px 4px 0; }
+    .estimate-strip small { color:var(--muted); font-size:11px; }
+    .estimate-strip b { font-size:15px; color:var(--navy); margin-left:auto; }
+
+    .filter-row { display:flex; gap:8px; overflow:hidden; margin:-4px 0 15px; }
+    .filter-chip { border:1px solid #B8DAD7; color:var(--teal); background:var(--teal-soft); padding:7px 10px; border-radius:999px; font-size:11px; white-space:nowrap; font-weight:750; }
+    .provider-list { display:grid; gap:11px; }
+    .provider-card { padding:13px; border:1px solid var(--line); border-radius:18px; background:#fff; }
+    .provider-card.featured { border-color:#99CBC6; background:linear-gradient(145deg,#fff 50%,#F0FAF8); box-shadow:0 8px 19px rgba(0,124,121,.08); }
+    .match-label { color:var(--teal); font-size:10px; font-weight:850; letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px; display:flex; align-items:center; gap:5px; }
+    .provider-top { display:flex; align-items:center; gap:11px; }
+    .avatar { width:52px; height:52px; overflow:hidden; border-radius:16px; background:#D9E8E5; flex:none; }
+    .avatar img { width:100%; height:100%; object-fit:cover; }
+    .avatar.initials { display:grid; place-items:center; color:var(--navy); font-weight:850; font-size:16px; background:#E8EFF5; }
+    .provider-name { flex:1; min-width:0; }
+    .provider-name b { display:block; font-size:15px; color:var(--navy); }
+    .provider-name span { display:block; color:var(--teal); font-size:12px; margin-top:2px; }
+    .rating { display:flex; align-items:center; gap:3px; font-size:11px; color:var(--muted); margin-top:5px; }
+    .star { color:var(--gold); font-size:14px; }
+    .provider-meta { display:flex; justify-content:space-between; gap:8px; margin:11px 0 10px; color:var(--muted); font-size:11px; }
+    .chips { display:flex; flex-wrap:wrap; gap:5px; }
+    .chip { background:#F1F5F7; color:#41515A; border-radius:999px; padding:4px 7px; font-size:10px; font-weight:700; }
+    .provider-footer { display:flex; align-items:center; justify-content:space-between; gap:9px; margin-top:12px; }
+    .price { color:var(--navy); font-size:13px; font-weight:850; }
+    .small-cta { border:0; background:transparent; padding:8px 0; color:var(--teal); font-size:11px; font-weight:850; }
+
+    .profile-head { display:flex; gap:13px; align-items:center; margin:2px 0 17px; }
+    .profile-head .avatar { width:83px; height:83px; border-radius:22px; }
+    .profile-head h2 { font-size:24px; letter-spacing:-.04em; margin:0; color:var(--navy); }
+    .profile-head .cn-name { color:var(--teal); font-size:14px; font-weight:700; margin:3px 0 6px; }
+    .profile-facts { display:flex; gap:9px; color:var(--muted); font-size:11px; flex-wrap:wrap; }
+    .profile-facts span { white-space:nowrap; }
+    .info-card { border:1px solid var(--line); background:#fff; border-radius:17px; padding:14px; margin-top:12px; }
+    .info-card h3 { color:var(--navy); font-size:13px; margin:0 0 10px; }
+    .reason-row,.verify-row { min-height:35px; display:flex; align-items:center; gap:9px; font-size:12px; }
+    .reason-row + .reason-row,.verify-row + .verify-row { border-top:1px solid #EDF1F3; }
+    .mini-check { color:var(--teal); font-weight:900; }
+    .verify-row { font-size:11.5px; }
+    .verify-row span:nth-child(2) { flex:1; }
+    .verify-date { font-size:9.5px; color:var(--muted); text-align:right; }
+    .verification-link { margin-top:9px; }
+    .price-card { display:flex; gap:11px; align-items:center; }
+    .price-card .price-icon { width:39px; height:39px; border-radius:12px; background:var(--teal-soft); color:var(--teal); display:grid; place-items:center; }
+    .price-card b { color:var(--navy); font-size:14px; }
+    .price-card small { display:block; color:var(--muted); font-size:10.5px; margin-top:3px; }
+    .total-estimate { margin-left:auto; text-align:right; }
+    .total-estimate strong { display:block; color:var(--navy); font-size:14px; }
+    .total-estimate small { font-size:10px; color:var(--muted); }
+
+    .confirmation-hero { padding:15px; border:1px solid #B6DDD8; background:linear-gradient(130deg,#F4FCFA,#E8F4F3); border-radius:18px; display:flex; gap:11px; align-items:flex-start; }
+    .success-badge { width:38px; height:38px; display:grid; place-items:center; flex:none; border-radius:12px; color:#fff; background:var(--teal); }
+    .confirmation-hero b { color:var(--navy); font-size:15px; display:block; }
+    .confirmation-hero span { display:block; color:var(--teal); font-size:12px; margin-top:3px; font-weight:700; }
+    .booking-summary { margin:13px 0; padding:13px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+    .booking-summary .summary-row { display:flex; gap:10px; align-items:flex-start; font-size:12px; }
+    .booking-summary .summary-row + .summary-row { border-top:1px solid #EDF1F3; margin-top:10px; padding-top:10px; }
+    .summary-row b { display:block; color:var(--ink); font-size:12px; }
+    .summary-row small { display:block; color:var(--muted); margin-top:2px; font-size:10.5px; }
+    .timeline { position:relative; margin:3px 0 15px; }
+    .timeline:before { content:""; position:absolute; left:11px; top:13px; bottom:13px; width:2px; background:#D7E3E5; }
+    .timeline-row { min-height:58px; position:relative; display:flex; align-items:flex-start; gap:12px; }
+    .timeline-dot { width:24px; height:24px; z-index:1; display:grid; place-items:center; border-radius:50%; background:#fff; border:2px solid #C8D7DB; color:#95A4AB; font-size:11px; flex:none; }
+    .timeline-row.done .timeline-dot { background:var(--teal); border-color:var(--teal); color:#fff; }
+    .timeline-row.active .timeline-dot { border-color:var(--teal); color:var(--teal); box-shadow:0 0 0 4px #DFF2F0; }
+    .timeline-copy { padding-top:2px; flex:1; }
+    .timeline-copy b { font-size:12px; color:var(--ink); }
+    .timeline-copy span { display:block; color:var(--muted); font-size:10.5px; margin-top:2px; }
+    .timeline-row.active .timeline-copy b { color:var(--teal); }
+    .map { height:107px; position:relative; border:1px solid #CDE4E1; border-radius:16px; overflow:hidden; background-color:#E8F4F3; background-image:linear-gradient(30deg,transparent 45%,rgba(255,255,255,.75) 45%,rgba(255,255,255,.75) 55%,transparent 55%),linear-gradient(-30deg,transparent 44%,rgba(255,255,255,.82) 44%,rgba(255,255,255,.82) 56%,transparent 56%),linear-gradient(0deg,transparent 47%,rgba(255,255,255,.7) 47%,rgba(255,255,255,.7) 53%,transparent 53%); background-size:90px 90px,110px 110px,75px 75px; }
+    .route { position:absolute; height:4px; width:190px; left:80px; top:54px; transform:rotate(-13deg); border-radius:99px; background:var(--teal); }
+    .pin { position:absolute; width:25px; height:25px; display:grid; place-items:center; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:var(--navy); color:#fff; box-shadow:0 4px 8px rgba(18,59,93,.22); }
+    .pin svg { transform:rotate(45deg); width:13px; }
+    .pin.home { right:61px; top:26px; background:var(--teal); }
+    .pin.caregiver { left:58px; top:56px; }
+    .track-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+    .track-actions button { min-height:48px; border:1.5px solid var(--navy); border-radius:14px; background:white; color:var(--navy); font-weight:800; font-size:12px; }
+    .share-row { min-height:48px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); font-size:12px; }
+    .share-row small { display:block; color:var(--muted); font-size:10px; margin-top:2px; }
+    .share-check { color:var(--teal); font-weight:850; font-size:11px; }
+
+    .receipt { border:1px solid var(--line); background:#fff; padding:14px; border-radius:17px; }
+    .receipt-row { min-height:28px; display:flex; align-items:start; justify-content:space-between; gap:10px; font-size:12px; }
+    .receipt-row span:first-child { color:var(--ink); }
+    .receipt-row span:last-child { color:var(--navy); font-weight:750; text-align:right; }
+    .receipt-row.muted span:first-child { color:var(--muted); }
+    .receipt-row.muted .add-link { color:var(--teal); font-size:10px; font-weight:800; }
+    .receipt-total { border-top:1px dashed #B9C9CF; margin-top:8px; padding-top:12px; display:flex; justify-content:space-between; color:var(--navy); font-weight:850; font-size:15px; }
+    .receipt-link { display:flex; align-items:center; justify-content:center; gap:5px; margin-top:10px; width:100%; min-height:36px; color:var(--teal); font-weight:800; border:0; background:transparent; font-size:11px; }
+    .review-card { padding:15px; border:1px solid #CAE5E2; background:#F3FAF9; border-radius:17px; margin-top:13px; }
+    .review-card h3 { color:var(--navy); font-size:14px; margin:0 0 5px; }
+    .review-card p { color:var(--muted); font-size:11px; line-height:1.4; margin:0; }
+    .stars { display:flex; gap:8px; margin:13px 0 8px; }
+    .stars button { width:40px; height:40px; border:1px solid #D4DDDF; border-radius:11px; background:#fff; color:var(--gold); font-size:21px; }
+    .stars button.selected { border-color:#E3BF78; background:#FFF9EC; }
+    .very-good { font-size:11px; color:var(--teal); font-weight:800; }
+    .comment-box { margin-top:11px; min-height:54px; padding:10px; border:1px solid #D6E4E6; border-radius:12px; background:#fff; color:#83949A; font-size:11px; line-height:1.35; }
+    .report-strip { margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:11px; border:1px solid #EAC5C2; background:#FFF8F7; border-radius:13px; font-size:11px; color:#783631; }
+    .report-strip b { display:block; }
+    .report-strip small { display:block; margin-top:2px; color:#8F5B56; }
+
+    .modal-layer { display:none; position:absolute; inset:0; z-index:50; background:rgba(12,35,52,.38); align-items:flex-end; }
+    .modal-layer.show { display:flex; }
+    .modal { width:100%; border-radius:25px 25px 0 0; padding:19px 20px 22px; background:#fff; box-shadow:0 -10px 28px rgba(0,0,0,.12); animation:up .22s ease-out; }
+    @keyframes up { from{transform:translateY(30px); opacity:.4}to{transform:translateY(0);opacity:1} }
+    .modal-handle { width:39px; height:4px; border-radius:99px; background:#C8D5DA; margin:0 auto 17px; }
+    .modal h2 { margin:0 0 7px; font-size:19px; color:var(--navy); letter-spacing:-.03em; }
+    .modal p { color:var(--muted); font-size:12px; line-height:1.45; margin:0 0 16px; }
+    .modal .button + .button { margin-top:9px; }
+    .modal .button.secondary-text { background:transparent; color:var(--navy); box-shadow:none; min-height:42px; }
+    .toast { position:absolute; left:50%; transform:translateX(-50%) translateY(10px); bottom:90px; opacity:0; pointer-events:none; z-index:90; color:#fff; background:#233A4C; border-radius:999px; box-shadow:0 5px 16px rgba(0,0,0,.15); padding:10px 14px; font-size:11px; font-weight:700; transition:all .24s; white-space:nowrap; }
+    .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+    .phone.large-text .screen { font-size:1.11em; }
+    .phone.large-text .page-title { font-size:31px; }
+    .phone.large-text .page-subtitle { font-size:15px; }
+    .phone.large-text .choice { min-height:78px; }
+
+    .icon { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+    .icon.small { width:17px; height:17px; }
+    .hidden { display:none !important; }
+
+    @media (max-width:760px) {
+      .workspace { padding:0; }
+      .side-panel { display:none; }
+      .phone { width:100vw; height:100vh; max-width:430px; border-radius:0; border:0; box-shadow:none; }
+      .phone::before { display:none; }
+      .statusbar { padding-top:13px; }
+    }
+
+    /* ===== Accessibility pass: matches the Task 2.2 rationale =====
+       Body 18 sp | headings 28-30 sp | secondary text >= 14 sp
+       Interactive targets >= 48 x 48 | contrast >= 4.5:1 for text */
+    :root { --muted:#45535D; --nav-inactive:#4A5963; --placeholder:#566670; }
+    .phone .screen { font-size:18px; padding-bottom:150px; }
+    .phone .page-title { font-size:30px; }
+    .phone .page-subtitle { font-size:18px; line-height:1.5; }
+    .phone .section-title h2 { font-size:20px; }
+    .phone .tagline { font-size:18px; }
+    .phone .hero-cta b { font-size:24px; }
+    .phone .hero-cta small { font-size:15px; }
+    .phone .choice-copy b, .phone .provider-name b { font-size:18px; }
+    .phone .choice-copy b span, .phone .provider-name span { font-size:15px; }
+    .phone .option-row b, .phone .address-row b, .phone .summary-row b, .phone .next-visit b,
+    .phone .task-card b, .phone .mini-benefit b, .phone .timeline-copy b, .phone .price-card b,
+    .phone .emergency-card b, .phone .toggle-row, .phone .receipt-row, .phone .reason-row,
+    .phone .verify-row, .phone .price, .phone .booking-summary .summary-row { font-size:16px; }
+    .phone .confirmation-hero b { font-size:18px; }
+    .phone .profile-head h2 { font-size:28px; }
+    .phone .receipt-total { font-size:20px; }
+    .phone .info-card h3, .phone .field-label, .phone .review-card h3 { font-size:16px; }
+
+    /* secondary and helper text: never below 14 sp */
+    .phone .screen small, .phone .screen .chip, .phone .screen .filter-chip, .phone .provider-meta,
+    .phone .rating, .phone .profile-facts, .phone .verify-date, .phone .timeline-copy span,
+    .phone .eyebrow-label, .phone .match-label, .phone .voice-note p, .phone .comment-box,
+    .phone .review-card p, .phone .report-strip, .phone .very-good, .phone .share-check,
+    .phone .step, .phone .modal p, .phone .toast, .phone .receipt-row.muted .add-link,
+    .phone .total-estimate small, .phone .total-estimate strong { font-size:14px; }
+    .phone .modal p { font-size:16px; }
+    .phone .modal h2 { font-size:22px; }
+    .phone .toast { white-space:normal; width:max-content; max-width:320px; text-align:center; }
+    .phone .comment-box { color:var(--placeholder); }
+    .phone .verify-date { color:var(--muted); }
+
+    /* touch targets: 48 x 48 minimum, 8 px spacing */
+    .phone .button { min-height:56px; font-size:18px; }
+    .phone .utility, .phone .back-button, .phone .section-title button, .phone .small-cta,
+    .phone .text-link, .phone .address-row .edit, .phone .receipt-link,
+    .phone .language-choice button, .phone .stars button, .phone .track-actions button,
+    .phone .option-row, .phone .report-strip button, .phone .modal .button.secondary-text,
+    .phone .jump { min-height:48px; min-width:48px; }
+    .phone .utility, .phone .back-button { width:auto; padding:0 12px; font-size:15px; }
+    .phone .back-button { width:48px; height:48px; }
+    .phone .text-link, .phone .small-cta, .phone .section-title button, .phone .receipt-link { display:inline-flex; align-items:center; font-size:15px; }
+    .phone .stars { gap:8px; }
+    .phone .stars button { width:48px; height:48px; }
+    .phone .track-actions button { font-size:16px; }
+    .phone .track-actions { gap:8px; }
+    .phone .choice-stack, .phone .provider-list, .phone .task-grid { gap:12px; }
+    .phone .option-row + .option-row { margin-top:8px; }
+    .phone .choice { min-height:80px; }
+    .phone .task-card { min-height:132px; }
+    .phone .filter-row { flex-wrap:wrap; }
+
+    /* bottom navigation: larger hit area, readable labels, 4.5:1 inactive colour */
+    .phone .nav { height:88px; padding:6px 10px 14px; }
+    .phone .nav button { color:var(--nav-inactive); font-size:13px; min-height:56px; }
+    .phone .nav button.active { color:var(--teal); font-weight:850; }
+    .phone .nav svg { width:24px; height:24px; }
+    .phone .sticky-action { padding-bottom:22px; }
+    .phone .stepper { flex-wrap:nowrap; }
+
+    /* extra large-text mode */
+    .phone.large-text .screen { font-size:20px; }
+    .phone.large-text .page-title { font-size:34px; }
+    .phone.large-text .page-subtitle { font-size:20px; }
+    .phone.large-text .screen small { font-size:16px; }
+    .phone.large-text .choice-copy b { font-size:20px; }
+    .phone.large-text .choice { min-height:92px; }
+
+    /* keyboard / assistive focus */
+    .phone :focus-visible { outline:3px solid #0B5FFF; outline-offset:2px; }
+    .phone .listening { border-color:var(--teal); background:var(--teal-soft); }
+  </style>
+</head>
+<body>
+  <!-- Inline SVG icon library -->
+  <svg class="hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-heart-link" viewBox="0 0 24 24"><path d="M7.2 5.5A4.1 4.1 0 0 0 3 9.6c0 4.4 5.2 7.7 9 10.4 3.8-2.7 9-6 9-10.4a4.1 4.1 0 0 0-7.2-2.7L12 8.7l-1.8-1.8A4.1 4.1 0 0 0 7.2 5.5Z"/><path d="M9 12h6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-8.5 8 9.2 9.2 0 0 1-3.6-.75L4 20l1.3-4A8 8 0 1 1 21 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-clock-heart" viewBox="0 0 24 24"><circle cx="11" cy="12" r="8"/><path d="M11 8v4l3 2"/><path d="M18 16.5c.9-1.1 3-2.1 3 0 0 1.3-1.7 2.4-3 3.3-1.3-.9-3-2-3-3.3 0-2.1 2.1-1.1 3 0Z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m8.5 12 2.1 2.1 4.8-4.7"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 3h3l2 5-2 1.5a15 15 0 0 0 6.5 6.5L16 14l5 2v3c0 1.1-.9 2-2 2C10.2 21 3 13.8 3 5c0-1.1.9-2 2-2Z"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-carer" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 8h5M18.5 5.5v5"/></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4z"/><path d="M12 7v10"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  </svg>
+
+  <main class="workspace">
+    <aside class="side-panel">
+      <p class="eyebrow">Interactive concept</p>
+      <h1>CareLink <span>护联</span></h1>
+      <p>Accessible, bilingual home-care coordination for older adults, families, and independent caregivers.</p>
+      <div class="flow-card">
+        <strong>Prototype flow</strong>
+        <small>Start → Care Now → needs → matching → credentials → live visit → receipt & review</small>
+        <div class="screen-jumps" aria-label="Preview screens">
+          <button class="jump" data-go="splash">Start</button><button class="jump" data-go="home">Home</button><button class="jump" data-go="need">Booking</button><button class="jump" data-go="results">Match</button><button class="jump" data-go="profile">Profile</button><button class="jump" data-go="track">Tracking</button><button class="jump" data-go="review">Review</button><button class="jump" data-go="resume">Resume</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="phone" id="phone" aria-label="CareLink interactive mobile prototype">
+      <div class="statusbar"><span>9:41</span><span class="status-icons"><i class="signal"></i><i class="wifi"></i><i class="battery"></i></span></div>
+      <div class="app">
+        <!-- Screen 1: Splash -->
+        <section class="screen splash active" id="splash" aria-label="Splash and onboarding">
+          <div class="splash-content">
+            <div class="brand-mark"><svg><use href="#i-heart-link"/></svg></div>
+            <div class="wordmark">CareLink <span>护联</span></div>
+            <p class="tagline">Trusted care, made simple.<br>安心照护，简单连接。</p>
+            <div class="language-choice"><button class="selected">English</button><button>中文</button></div>
+            <div class="onboarding-grid">
+              <div class="mini-benefit"><div class="benefit-icon"><svg class="icon"><use href="#i-shield"/></svg></div><div><b>Verified care <span lang="zh">认证护工</span></b><small>See credentials before you book.</small></div></div>
+              <div class="mini-benefit"><div class="benefit-icon"><svg class="icon"><use href="#i-chat"/></svg></div><div><b>Family updates <span lang="zh">家人同步</span></b><small>Keep the people you trust informed.</small></div></div>
+            </div>
+            <button class="button primary" data-go="home">Get started / 开始使用</button>
+            <p style="font-size:11px;color:var(--muted);margin:13px 0 0">For non-emergency home care support.</p>
+          </div>
+        </section>
+
+        <!-- Screen 2: Home -->
+        <section class="screen" id="home" aria-label="Home dashboard">
+          <div class="topbar"><div class="small-brand">CareLink <span>护联</span></div><div class="utility-actions"><button class="utility aa-toggle" aria-label="Increase text size">Aa</button><button class="utility language-pill" aria-label="Change language">EN / 中文</button></div></div>
+          <h1 class="page-title">Good morning, Jason</h1>
+          <p class="page-subtitle">How can we help today? <span lang="zh">今天需要什么帮助？</span></p>
+          <button class="hero-cta" data-go="need"><span class="cta-symbol"><svg class="icon"><use href="#i-clock-heart"/></svg></span><b>Care Now <span>立即找护工</span></b><small>Find available help today</small></button>
+          <div class="section-title"><h2>Next visit</h2><button data-go="track">View all</button></div>
+          <button class="next-visit" style="width:100%;text-align:left" data-go="track"><div class="calendar-block">TOM<br><span style="font-size:18px">18</span></div><div class="visit-copy"><span class="eyebrow-label">Tomorrow, 10:00 AM</span><b>Companion care with Mei Chen</b><small>陪伴照护 · 陈美玲</small></div><span class="chevron">›</span></button>
+          <div class="section-title"><h2>Choose an action</h2></div>
+          <div class="task-grid">
+            <button class="task-card" data-go="need"><span class="task-icon"><svg class="icon"><use href="#i-calendar"/></svg></span><b>Book care</b><small>预约照护</small><span class="chevron">›</span></button>
+            <button class="task-card" data-go="track"><span class="task-icon"><svg class="icon"><use href="#i-clock-heart"/></svg></span><b>My visits</b><small>我的行程</small><span class="chevron">›</span></button>
+            <button class="task-card"><span class="task-icon"><svg class="icon"><use href="#i-chat"/></svg></span><span><b>Messages</b><small>Talk to your care team · 消息</small></span><span class="chevron">›</span></button>
+          </div>
+          <div class="emergency-card"><svg class="icon alert-symbol"><use href="#i-warning"/></svg><div><b>Medical emergency?</b><small>Call local emergency services.</small><button class="text-link" data-modal="emergency">Emergency help / 紧急求助</button></div></div>
+        </section>
+
+        <!-- Screen 3: Need -->
+        <section class="screen" id="need" aria-label="Choose care need">
+          <div class="back-row"><button class="back-button" data-go="home"><svg class="icon"><use href="#i-arrow-left"/></svg></button></div>
+          <h1 class="page-title">What help is needed?</h1><p class="page-subtitle">Choose one. You can add a note later.<br><span lang="zh">请选择一项，稍后可补充说明。</span></p>
+          <div class="stepper"><div class="step active"><span class="step-dot">1</span>Need</div><div class="step-line"></div><div class="step"><span class="step-dot">2</span>Match</div><div class="step-line"></div><div class="step"><span class="step-dot">3</span>Confirm</div></div>
+          <div class="choice-stack" id="care-choices">
+            <button class="choice selected" data-choice="Companion care"><span class="choice-icon"><svg class="icon"><use href="#i-carer"/></svg></span><span class="choice-copy"><b>Companion care <span>陪伴照护</span></b><small>Someone to stay and help at home</small></span><span class="check">✓</span></button>
+            <button class="choice" data-choice="Personal care"><span class="choice-icon"><svg class="icon"><use href="#i-heart-link"/></svg></span><span class="choice-copy"><b>Personal care <span>个人照护</span></b><small>Help with daily routines</small></span><span class="check">✓</span></button>
+            <button class="choice" data-choice="Nursing support"><span class="choice-icon"><svg class="icon"><use href="#i-shield"/></svg></span><span class="choice-copy"><b>Nursing support <span>护理协助</span></b><small>Support from a qualified professional</small></span><span class="check">✓</span></button>
+            <button class="choice" data-choice="Transport companion"><span class="choice-icon"><svg class="icon"><use href="#i-location"/></svg></span><span class="choice-copy"><b>Transport companion <span>陪诊出行</span></b><small>Help getting to an appointment</small></span><span class="check">✓</span></button>
+          </div>
+          <div class="sticky-action"><button class="button primary" data-go="details">Continue / 继续</button></div>
+        </section>
+
+        <!-- Screen 4: Details -->
+        <section class="screen" id="details" aria-label="Booking details">
+          <div class="back-row"><button class="back-button" data-go="need"><svg class="icon"><use href="#i-arrow-left"/></svg></button></div>
+          <h1 class="page-title">When and where?</h1><p class="page-subtitle">We will only show details needed for this visit.<br><span lang="zh">只需填写本次照护所需资料。</span></p>
+          <div class="stepper"><div class="step done"><span class="step-dot">✓</span>Need</div><div class="step-line"></div><div class="step active"><span class="step-dot">2</span>Match</div><div class="step-line"></div><div class="step"><span class="step-dot">3</span>Confirm</div></div>
+          <div class="field-section">
+            <div class="field-group"><div class="field-label">Time / 时间</div><button class="option-row selected time-option"><span class="radio"></span><span><b>As soon as possible / 尽快安排</b><small>Within 2 hours, if available</small></span></button><button class="option-row time-option"><span class="radio"></span><span><b>Choose a time / 选择时间</b><small>Plan a future visit</small></span></button></div>
+            <div class="field-group"><div class="field-label">Location / 地点</div><div class="address-row"><svg class="icon" style="color:var(--teal)"><use href="#i-location"/></svg><div><b>Mum’s home / 妈妈家</b><small>12 Jalan Meranti, Sibu</small></div><button class="edit">Edit / 修改</button></div></div>
+            <div class="field-group"><div class="field-label">Tell the caregiver <span>Optional / 可选</span></div><div class="voice-note"><span class="microphone"><svg class="icon small"><use href="#i-mic"/></svg></span><p>Mum would like company and help preparing lunch.</p></div></div>
+            <div class="field-group"><div class="toggle-row"><span><b>Keep family informed</b><br><span style="font-size:10px;color:var(--muted)">Share visit updates with Jason</span></span><span class="switch"></span></div></div>
+          </div>
+          <div class="sticky-action"><div class="estimate-strip"><small>Estimated from</small><b>RM48</b></div><button class="button primary" data-go="results">Find a caregiver / 寻找护工</button></div>
+        </section>
+
+        <!-- Screen 5: Results -->
+        <section class="screen" id="results" aria-label="Matched caregivers">
+          <div class="back-row"><button class="back-button" data-go="details"><svg class="icon"><use href="#i-arrow-left"/></svg></button></div>
+          <h1 class="page-title">Available for you</h1><p class="page-subtitle">We found 3 verified caregivers nearby.<br><span lang="zh">我们找到 3 位附近的认证护工。</span></p>
+          <div class="stepper"><div class="step done"><span class="step-dot">✓</span>Need</div><div class="step-line"></div><div class="step done"><span class="step-dot">✓</span>Match</div><div class="step-line"></div><div class="step active"><span class="step-dot">3</span>Confirm</div></div>
+          <div class="filter-row"><span class="filter-chip">Mandarin</span><span class="filter-chip">Within 5 km</span><span class="filter-chip">Under RM80</span></div>
+          <div class="provider-list">
+            <article class="provider-card featured"><div class="match-label">✦ Best match for your request</div><div class="provider-top"><div class="avatar"><img src="assets/mei-chen.png" alt="Fictional caregiver Mei Chen"></div><div class="provider-name"><b>Mei Chen</b><span>陈美玲</span><div class="rating"><span class="star">★</span> 4.9 · 128 visits</div></div><span class="chevron">›</span></div><div class="provider-meta"><span>Speaks Mandarin · 2.3 km</span><span>Available today</span></div><div class="chips"><span class="chip">Mandarin</span><span class="chip">Companion care</span><span class="chip">First aid</span></div><div class="provider-footer"><span class="price">From RM48 / hour</span><button class="small-cta" data-go="profile">View Mei’s profile →</button></div></article>
+            <article class="provider-card"><div class="provider-top"><div class="avatar initials">AR</div><div class="provider-name"><b>Aina Rahman</b><span>艾娜</span><div class="rating"><span class="star">★</span> 4.8 · 96 visits</div></div></div><div class="provider-footer"><span class="price">From RM52 / hour</span><button class="small-cta">View profile →</button></div></article>
+            <article class="provider-card"><div class="provider-top"><div class="avatar initials">KD</div><div class="provider-name"><b>Kumar Das</b><span>古玛</span><div class="rating"><span class="star">★</span> 4.7 · 74 visits</div></div></div><div class="provider-footer"><span class="price">From RM50 / hour</span><button class="small-cta">View profile →</button></div></article>
+          </div>
+        </section>
+
+        <!-- Screen 6: Profile -->
+        <section class="screen" id="profile" aria-label="Caregiver profile and credential verification">
+          <div class="back-row"><button class="back-button" data-go="results"><svg class="icon"><use href="#i-arrow-left"/></svg></button></div>
+          <p class="eyebrow-label" style="margin:0 0 8px">Your caregiver match / 为您配对的护工</p>
+          <div class="profile-head"><div class="avatar"><img src="assets/mei-chen.png" alt="Fictional caregiver Mei Chen"></div><div><h2>Mei Chen</h2><p class="cn-name">陈美玲</p><div class="profile-facts"><span><span class="star">★</span> 4.9 (128)</span><span>2.3 km away</span><span>Replies ~5 min</span></div></div></div>
+          <div class="info-card"><h3>Why Mei? / 推荐原因</h3><div class="reason-row"><span class="mini-check">✓</span><span>Speaks Mandarin</span></div><div class="reason-row"><span class="mini-check">✓</span><span>Available within 2 hours</span></div><div class="reason-row"><span class="mini-check">✓</span><span>Experienced in companion care</span></div></div>
+          <div class="info-card"><h3>Verified details / 认证资料</h3><div class="verify-row"><svg class="icon small" style="color:var(--teal)"><use href="#i-shield"/></svg><span>Identity verified / 身份已认证</span><span class="verify-date">Active</span></div><div class="verify-row"><svg class="icon small" style="color:var(--teal)"><use href="#i-check"/></svg><span>First-aid certificate checked</span><span class="verify-date">12 Sep 2026</span></div><div class="verify-row"><svg class="icon small" style="color:var(--teal)"><use href="#i-check"/></svg><span>Background screening complete</span><span class="verify-date">05 Aug 2026</span></div><button class="text-link verification-link">What does verified mean? / 已认证说明</button></div>
+          <div class="info-card price-card"><span class="price-icon"><svg class="icon"><use href="#i-ticket"/></svg></span><div><b>Companion care</b><small>RM48/hour · 2-hour minimum</small><div class="chips" style="margin-top:6px"><span class="chip">English</span><span class="chip">中文</span></div></div><div class="total-estimate"><small>Estimated total</small><strong>RM96–110</strong></div></div>
+          <div class="sticky-action"><button class="button primary" data-modal="hold">Select Mei / 选择美姐</button><button class="button secondary-text">Compare caregivers</button></div>
+        </section>
+
+        <!-- Screen 7: Track -->
+        <section class="screen" id="track" aria-label="Live visit tracking and emergency help">
+          <div class="topbar"><div class="small-brand">CareLink <span>护联</span></div><div class="utility-actions"><button class="utility aa-toggle">Aa</button><button class="utility language-pill">EN / 中文</button></div></div>
+          <div class="confirmation-hero"><span class="success-badge"><svg class="icon"><use href="#i-check"/></svg></span><div><b>Your visit is confirmed</b><span>已确认预约</span></div></div>
+          <div class="booking-summary"><div class="summary-row"><svg class="icon small" style="color:var(--teal)"><use href="#i-calendar"/></svg><span><b>Today, 2:00–4:00 PM</b><small>Companion care with Mei Chen / 陈美玲</small></span></div><div class="summary-row"><svg class="icon small" style="color:var(--teal)"><use href="#i-location"/></svg><span><b>12 Jalan Meranti, Sibu</b><small>Mum’s home / 妈妈家</small></span></div></div>
+          <div class="section-title" style="margin-top:8px"><h2>Visit status / 服务进度</h2></div>
+          <div class="timeline"><div class="timeline-row done"><span class="timeline-dot">✓</span><div class="timeline-copy"><b>Booked / 已预约</b><span>11:15 AM</span></div></div><div class="timeline-row active"><span class="timeline-dot">•</span><div class="timeline-copy"><b>Mei is on the way / 美姐正在路上</b><span>Arrives in about 18 min</span></div></div><div class="timeline-row"><span class="timeline-dot">3</span><div class="timeline-copy"><b>Checked in / 已签到</b><span>Upcoming</span></div></div><div class="timeline-row"><span class="timeline-dot">4</span><div class="timeline-copy"><b>Care in progress / 服务中</b><span>Upcoming</span></div></div><div class="timeline-row"><span class="timeline-dot">5</span><div class="timeline-copy"><b>Visit complete / 服务完成</b><span>Upcoming</span></div></div></div>
+          <div class="map"><span class="route"></span><span class="pin caregiver"><svg class="icon"><use href="#i-carer"/></svg></span><span class="pin home"><svg class="icon"><use href="#i-home"/></svg></span></div>
+          <div class="track-actions"><button><svg class="icon small" style="vertical-align:-4px;margin-right:3px"><use href="#i-phone"/></svg>Call Mei</button><button><svg class="icon small" style="vertical-align:-4px;margin-right:3px"><use href="#i-chat"/></svg>Message</button></div>
+          <div class="share-row"><span><b>Share visit updates</b><small>Jason will be notified</small></span><span class="share-check">✓ On</span></div>
+          <div class="emergency-card"><svg class="icon alert-symbol"><use href="#i-warning"/></svg><div><b>Need urgent help? / 需要紧急帮助？</b><small>Call emergency services or a trusted contact.</small><button class="text-link" data-modal="emergency">Emergency help / 紧急求助</button></div></div>
+          <button class="button outline" style="margin-top:13px" data-go="review">Simulate visit complete →</button>
+        </section>
+
+        <!-- Screen 8: Review -->
+        <section class="screen" id="review" aria-label="Payment receipt and review">
+          <div class="topbar"><div class="small-brand">CareLink <span>护联</span></div><div class="utility-actions"><button class="utility aa-toggle">Aa</button><button class="utility language-pill">EN / 中文</button></div></div>
+          <div class="confirmation-hero"><span class="success-badge"><svg class="icon"><use href="#i-check"/></svg></span><div><b>Visit complete</b><span>服务完成 · Mei checked out at 3:52 PM</span></div></div>
+          <div class="section-title"><h2>Payment summary / 付款摘要</h2></div>
+          <div class="receipt"><div class="receipt-row"><span>Companion care — 2 hours</span><span>RM96.00</span></div><div class="receipt-row"><span>Platform service fee</span><span>RM4.00</span></div><div class="receipt-row muted"><span>CarePass visit protection</span><span class="add-link">Not selected · Add next time</span></div><div class="receipt-total"><span>Total paid</span><span>RM100.00</span></div><button class="receipt-link"><svg class="icon small"><use href="#i-receipt"/></svg>View receipt / 查看收据</button></div>
+          <div class="review-card"><h3>How was your visit with Mei?</h3><p>您对美姐的服务满意吗？</p><div class="stars" id="stars"><button class="selected">★</button><button class="selected">★</button><button class="selected">★</button><button class="selected">★</button><button class="selected">★</button></div><span class="very-good">Very good / 非常满意</span><div class="comment-box">Tell us what went well (optional)</div></div>
+          <div class="report-strip"><span><b>Something was not right?</b><small>We can help resolve it.</small></span><button class="text-link" style="color:#9C2D25">Report an issue</button></div>
+          <div style="height:14px"></div><button class="button primary" data-go="home">Done / 完成</button><button class="button outline" style="margin-top:10px" data-go="need">Book again / 再次预约</button>
+        </section>
+
+        <!-- Screen 9: Resume -->
+        <section class="screen" id="resume" aria-label="Resume saved request">
+          <div class="topbar"><div class="small-brand">CareLink <span>护联</span></div><div class="utility-actions"><button class="utility aa-toggle">Aa</button><button class="utility language-pill">EN / 中文</button></div></div>
+          <div style="height:42px"></div><div class="brand-mark" style="width:58px;height:58px;border-radius:19px;margin-bottom:18px"><svg style="width:35px;height:35px"><use href="#i-clock-heart"/></svg></div>
+          <h1 class="page-title">Resume request</h1><p class="page-subtitle">Your Care Now request was saved.<br><span lang="zh">您的“立即找护工”预约已保存。</span></p>
+          <div class="info-card" style="margin-top:22px"><h3>Saved request / 已保存的预约</h3><div class="reason-row"><span class="mini-check">✓</span><span>Companion care / 陪伴照护</span></div><div class="reason-row"><span class="mini-check">✓</span><span>As soon as possible / 尽快安排</span></div><div class="reason-row"><span class="mini-check">✓</span><span>Mum’s home / 妈妈家</span></div></div>
+          <div style="height:22px"></div><button class="button primary" data-go="details">Continue request / 继续预约</button><button class="button outline" style="margin-top:10px" data-modal="restart">Start over / 重新开始</button>
+        </section>
+
+        <nav class="nav hidden" id="nav" aria-label="Main navigation"><button class="active" data-go="home"><svg><use href="#i-home"/></svg><span>Home<br>首页</span></button><button data-go="track"><svg><use href="#i-calendar"/></svg><span>Visits<br>行程</span></button><button><svg><use href="#i-chat"/></svg><span>Messages<br>消息</span></button><button data-go="resume"><svg><use href="#i-user"/></svg><span>Profile<br>我的</span></button></nav>
+        <div class="modal-layer" id="modal-hold"><div class="modal"><div class="modal-handle"></div><h2>Hold Mei’s time slot?</h2><p>暂时保留美姐的时间？<br>We will hold this time for 10 minutes while you review the booking.</p><button class="button primary" data-go="track" data-close="hold">Review booking / 查看预约</button><button class="button secondary-text" data-close="hold">Not now / 暂不</button></div></div>
+        <div class="modal-layer" id="modal-emergency"><div class="modal"><div class="modal-handle"></div><h2>Get emergency help?</h2><p>寻求紧急协助？<br>Call local emergency services or notify your trusted contact. Your location will only be shared after you confirm.</p><button class="button red" data-close="emergency">Call emergency services</button><button class="button outline" style="margin-top:9px" data-close="emergency">Notify Jason</button><button class="button secondary-text" data-close="emergency">Cancel</button></div></div>
+        <div class="modal-layer" id="modal-restart"><div class="modal"><div class="modal-handle"></div><h2>Start a new request?</h2><p>Your saved Care Now request will be removed. You can still create a new booking at any time.</p><button class="button primary" data-go="need" data-close="restart">Start over</button><button class="button secondary-text" data-close="restart">Keep saved request</button></div></div>
+        <div class="modal-layer" id="modal-verify"><div class="modal"><div class="modal-handle"></div><h2>What does “verified” mean?</h2><p>已认证说明<br>CareLink has checked the identity, certificate and background-screening records listed on this profile, on the dates shown. It does not guarantee every clinical skill. For medical concerns, contact a doctor or emergency services.</p><button class="button primary" data-close="verify">Got it / 明白了</button></div></div>
+        <div class="modal-layer" id="modal-receipt"><div class="modal"><div class="modal-handle"></div><h2>Visit receipt</h2><p>查看收据<br>Companion care, 2 hours with Mei Chen. Check-in 1:52 PM, check-out 3:52 PM. Total paid RM100.00. A copy is kept in My visits.</p><button class="button primary" data-close="receipt">Close / 关闭</button></div></div>
+        <div class="toast" id="toast">Text size increased</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const phone = document.getElementById('phone');
+    const nav = document.getElementById('nav');
+    const toast = document.getElementById('toast');
+    const screensWithNav = new Set(['home','track','review','resume']);
+    let textLarge = false;
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(screen => screen.classList.toggle('active', screen.id === id));
+      nav.classList.toggle('hidden', !screensWithNav.has(id));
+      document.querySelectorAll('.nav button').forEach(btn => btn.classList.toggle('active', (id === 'home' && btn.dataset.go === 'home') || (id === 'track' && btn.dataset.go === 'track') || (id === 'resume' && btn.dataset.go === 'resume')));
+      document.querySelector('.screen.active')?.scrollTo({top:0, behavior:'instant'});
+    }
+    function closeModal(id) { document.getElementById('modal-' + id)?.classList.remove('show'); }
+    function showToast(message) { toast.textContent = message; toast.classList.add('show'); clearTimeout(window.toastTimeout); window.toastTimeout = setTimeout(() => toast.classList.remove('show'), 1900); }
+
+    document.addEventListener('click', event => {
+      const go = event.target.closest('[data-go]');
+      if (go) { if (go.dataset.close) closeModal(go.dataset.close); showScreen(go.dataset.go); }
+      const modal = event.target.closest('[data-modal]');
+      if (modal) document.getElementById('modal-' + modal.dataset.modal)?.classList.add('show');
+      const close = event.target.closest('[data-close]');
+      if (close && !close.dataset.go) closeModal(close.dataset.close);
+      if (event.target.closest('.aa-toggle')) { textLarge = !textLarge; phone.classList.toggle('large-text', textLarge); showToast(textLarge ? 'Large text is on / 已开启大字体' : 'Large text is off'); }
+      if (event.target.closest('.language-pill')) showToast('English + 中文 labels are shown');
+    });
+
+    document.querySelectorAll('#care-choices .choice').forEach(choice => choice.addEventListener('click', () => {
+      document.querySelectorAll('#care-choices .choice').forEach(item => item.classList.remove('selected'));
+      choice.classList.add('selected');
+      showToast(choice.dataset.choice + ' selected');
+    }));
+    document.querySelectorAll('.time-option').forEach(option => option.addEventListener('click', () => {
+      document.querySelectorAll('.time-option').forEach(item => item.classList.remove('selected'));
+      option.classList.add('selected');
+    }));
+    document.querySelectorAll('#stars button').forEach((star, index) => star.addEventListener('click', () => {
+      document.querySelectorAll('#stars button').forEach((item, i) => item.classList.toggle('selected', i <= index));
+      showToast(index === 4 ? 'Very good / 非常满意' : 'Rating saved');
+    }));
+    document.querySelectorAll('.language-choice button').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('.language-choice button').forEach(item => item.classList.remove('selected'));
+      button.classList.add('selected');
+    }));
+
+    /* ===== Wire up previously inert controls ===== */
+    function byText(selector, text) { return [...document.querySelectorAll(selector)].filter(el => el.textContent.includes(text)); }
+    function openModal(id) { document.getElementById('modal-' + id)?.classList.add('show'); }
+
+    // Messages: card on Home and nav item
+    [...byText('.task-card', 'Messages'), ...byText('.nav button', 'Messages')].forEach(el =>
+      el.addEventListener('click', () => showToast('Messages: not part of this prototype')));
+    // Credential explanation and receipt
+    byText('.verification-link', 'verified mean').forEach(el => el.addEventListener('click', () => openModal('verify')));
+    byText('.receipt-link', 'receipt').forEach(el => el.addEventListener('click', () => openModal('receipt')));
+    // Compare caregivers returns to the list
+    byText('.secondary-text', 'Compare').forEach(el => el.dataset.go = 'results');
+    // Other providers
+    document.querySelectorAll('.provider-card:not(.featured) .small-cta').forEach(el =>
+      el.addEventListener('click', () => showToast('Prototype shows Mei’s full profile only')));
+    // Whole featured card opens Mei's profile
+    document.querySelector('.provider-card.featured')?.addEventListener('click', e => { if (!e.target.closest('[data-go]')) showScreen('profile'); });
+    // Edit address
+    document.querySelector('.address-row .edit')?.addEventListener('click', () => showToast('Saved address: Mum’s home'));
+    // Voice note: simulated dictation with read-back
+    document.querySelector('.voice-note')?.addEventListener('click', e => {
+      const box = e.currentTarget, p = box.querySelector('p'), original = p.textContent;
+      box.classList.add('listening'); p.textContent = 'Listening… / 正在聆听…';
+      setTimeout(() => { box.classList.remove('listening'); p.textContent = original; showToast('Note read back: “' + original + '”'); }, 1500);
+    });
+    // Slot hold: 10-minute countdown shown on the tracking screen
+    let holdTimer;
+    document.querySelector('[data-modal="hold"]')?.addEventListener('click', () => {
+      clearInterval(holdTimer);
+      let seconds = 600;
+      const label = document.querySelector('#modal-hold p');
+      holdTimer = setInterval(() => {
+        seconds--; const m = String(Math.floor(seconds / 60)).padStart(2, '0'), s = String(seconds % 60).padStart(2, '0');
+        label.innerHTML = '暂时保留美姐的时间？<br>Slot held for ' + m + ':' + s + ' while you review the booking.';
+        if (seconds <= 0) clearInterval(holdTimer);
+      }, 1000);
+    });
+    // Accessibility: names for icon-only buttons
+    document.querySelectorAll('.back-button').forEach(b => b.setAttribute('aria-label', 'Go back'));
+    document.querySelectorAll('.stars button').forEach((b, i) => b.setAttribute('aria-label', (i + 1) + ' star' + (i ? 's' : '')));
+  </script>
+</body>
+</html>
